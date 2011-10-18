@@ -9,11 +9,12 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
   private var major: U2 = defaultMajor
 
   private var constantPool = new ConstantPool()
-  private val codeNameIndex: U2 = constantPool.addString("Code")
+  private lazy val codeNameIndex: U2 = constantPool.addString("Code")
+  private lazy val sourceFileNameIndex: U2 = constantPool.addString("SourceFile")
 
   private var accessFlags: U2 = defaultClassAccessFlags
   
-  private var thisClass: U2 = constantPool.addClass(constantPool.addString(className))
+  private val thisClass: U2 = constantPool.addClass(constantPool.addString(className))
   
   private val superClassName: String = parentName match {
     case None => "java/lang/Object"
@@ -28,9 +29,18 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
   private var interfacesCount: U2 = 0
   private var interfaces: List[U1] = Nil
 
-  private var attributesCount: U2 = 0
-  private var attributes: List[U1] = Nil
+  private var attributes : List[AttributeInfo] = Nil
   
+  private var _srcNameWasSet = false
+  def setSourceFile(sf : String) : Unit = {
+    if(_srcNameWasSet) {
+      sys.error("Cannot set the source file attribute twice.")
+    }
+    _srcNameWasSet = true
+    val idx = constantPool.addString(sf)
+    attributes = SourceFileAttributeInfo(sourceFileNameIndex, idx) :: attributes
+  }
+
   /** Adds a field to the class, using the default flags and no attributes. */
   def addField(tpe: String, name: String): FieldHandler = {
     val accessFlags: U2 = defaultFieldAccessFlags
@@ -122,7 +132,8 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
       interfacesCount <<
       fields.size.asInstanceOf[U2] << fields <<
       methods.size.asInstanceOf[U2] << methods <<
-      attributesCount
+      attributes.size.asInstanceOf[U2] << attributes
+
   }
   
   def stringToDescriptor(s: String) = s
