@@ -9,6 +9,14 @@ object AbstractByteCodes {
     def toStream(bs: ByteStream): ByteStream = sys.error("Abstract byte code cannot produce its own code. " + this)
   }
   
+  /** Line numbers take no space in the actual bytecode. They are 
+   * stored (at freeze-time) in the line number table and useful
+   * for debugging and for meaningful stack-traces */
+  case class LineNumber(line : Int) extends AbstractByteCode {
+    override val size : Int = 0
+    override def toStream(bs: ByteStream): ByteStream = bs
+  }
+
   /** A label takes no space in the actual bytecode, but serves
    * as an anchor in the stream of ABC. */
   case class Label(id: String) extends AbstractByteCode {

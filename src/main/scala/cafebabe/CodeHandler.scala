@@ -52,25 +52,33 @@ class CodeHandler(c: CodeAttributeInfo, cp: ConstantPool, val paramCount: Int) {
   /** "Freezes" the code: maxLocals is computed, abstract byte codes are turned
    *  into concrete ones. This includes computation of the label offsets. */
   def freeze: Unit = if(frozen) {} else {
-    import scala.collection.mutable.HashMap
+    import scala.collection.mutable.{Map=>MutableMap}
     abcList = abcList.reverse
     frozen = true
     code.maxLocals = locals
  
     var pc: Int = 0
-    // in the first pass, we collect the positions of all labels.
-    var labels: HashMap[String,Int] = new HashMap[String,Int]
-    abcList.foreach(abc => {
+    // In the first pass, we collect the positions of all labels.
+    // We also store line numbers information.
+    var lastLineNumber : Int = Int.MaxValue
+    val labels : MutableMap[String,Int] = MutableMap.empty
+    val lineInfo : MutableMap[Int,Int] = MutableMap.empty
+    for(abc <- abcList) {
       abc match {
+        case LineNumber(ln) if ln == lastLineNumber => ;
+        case LineNumber(ln) => {
+          lastLineNumber = ln
+          lineInfo(pc) = ln
+        }
         case Label(name) => labels(name) = pc
         case _ => ;
       }
       pc = pc + abc.size
-    })    
+    }
     
     // in the second pass, we set the jump offsets.
     pc = 0
-    abcList.foreach(abc => {
+    for(abc <- abcList) {
       abc match {
         case co: ControlOperator => {
           co.offset = (labels.getOrElse(co.target, 0) - pc)
@@ -78,8 +86,15 @@ class CodeHandler(c: CodeAttributeInfo, cp: ConstantPool, val paramCount: Int) {
         case _ => ;
       }
       pc = pc + abc.size
-    })
+    }
     
+    // we build the line number table.
+    if(!lineInfo.isEmpty) {
+      val lnta = new LineNumberTableAttributeInfo(constantPool.addString("LineNumberTable"))
+      lnta.setEntries(lineInfo.toSeq)
+      code.attributes = lnta +: code.attributes
+    }
+
     // we now compute the maximum stack height.
     code.maxStack = computeMaxStack(abcList)
     
