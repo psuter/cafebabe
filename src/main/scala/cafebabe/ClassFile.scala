@@ -32,6 +32,7 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
   private var attributes : List[AttributeInfo] = Nil
   
   private var _srcNameWasSet = false
+  /** Attaches the name of the original source file to the class file. */
   def setSourceFile(sf : String) : Unit = {
     if(_srcNameWasSet) {
       sys.error("Cannot set the source file attribute twice.")
