@@ -246,6 +246,14 @@ object AbstractByteCodes {
     }
   }
 
+  object InstanceOf {
+    def apply(className: String): AbstractByteCodeGenerator = {
+      (ch: CodeHandler) => {
+        ch << INSTANCEOF << RawBytes(ch.constantPool.addClass(ch.constantPool.addString(className)))
+      }
+    }
+  }
+
   object NewArray {
     def apply(arrayType: String): AbstractByteCodeGenerator = { // For objects
       (ch: CodeHandler) => {
