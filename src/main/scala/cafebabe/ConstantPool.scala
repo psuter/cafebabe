@@ -113,24 +113,22 @@ class ConstantPool extends Streamable {
 
   /** Encodes a string into the unusual UTF8-like encoding used in the class file format. */
   private def encodeString(s: String): Seq[U1] = {
-    var bytes: List[U1] = Nil
+    import scala.collection.mutable.ArrayBuffer
+    val bytes = ArrayBuffer.empty[U1]
     
-    for(i: Int <- (0 to s.length - 1)) {
-      val c: Char = s.charAt(i)
-
+    for(c: Char <- s) {
       if(c >= 0x0001 && c <= 0x007F) {
-        bytes = c :: bytes
+        bytes.append(c)
       } else if(c >= 0x0800) {
-        bytes = (0xE0 | c >>> 12) :: bytes
-        bytes = (0x80 | ((c & 0xFC0) >>> 6)) :: bytes
-        bytes = (0x80 | (c & 0x3F)) :: bytes
+        bytes.append(0xE0 | ((c >>> 12) & 0x0F))
+        bytes.append(0x80 | ((c >>> 6)  & 0x3F))
+        bytes.append(0x80 |          (c & 0x3F))
       } else {
-        bytes = (0xC0 | (c >>> 6)) :: bytes
-        bytes = (c & 0x3F) :: bytes
+        bytes.append(0xC0 | ((c >>> 6) & 0x1F))
+        bytes.append(0x80 |         (c & 0x3F))
       }        
     }
-    
-    bytes.reverse
+    bytes
   }
   
   def getFieldSize(idx: U2): Int = entryAt(idx) match {
