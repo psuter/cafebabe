@@ -253,6 +253,14 @@ object AbstractByteCodes {
       }
     }
   }
+  
+  object CheckCast {
+    def apply(className: String): AbstractByteCodeGenerator = {
+      (ch: CodeHandler) => {
+        ch << CHECKCAST << RawBytes(ch.constantPool.addClass(ch.constantPool.addString(className)))
+      }
+    }
+  }
 
   object NewArray {
     def apply(arrayType: String): AbstractByteCodeGenerator = { // For objects
