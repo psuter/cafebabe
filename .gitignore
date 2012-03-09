@@ -1,0 +1,6 @@
+# (x)sbt specific
+project
+target
+
+# Vim and others
+*.swp
