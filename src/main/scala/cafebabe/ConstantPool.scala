@@ -145,35 +145,6 @@ class ConstantPool extends Streamable {
   def getMethodEffect(idx: U2): Int = entryAt(idx) match {
     case CPMethodRefInfo(_, natid) => {
       val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
-      /*
-      // parsing code was refactored away in package object.
-      var count = 0
-      var sid = 1
-    
-      while(strDesc(sid) != ')') {
-        strDesc(sid) match {
-          case 'I' | 'Z' | 'B' | 'F' | 'S' | 'C' => { count += 1; sid += 1 }
-          case 'J' | 'D' => { count += 2; sid += 1 }
-          case 'L' => { count += 1; while(strDesc(sid) != ';') { sid += 1 }; sid += 1 }
-	  case '[' => { // Array, which means we have an object as parameter
-	    count += 1;
-	    while(strDesc(sid) == '[') { sid += 1 }
-	    if (strDesc(sid) == 'L') { // scan to end of object type
-	      while(strDesc(sid) != ';') { sid += 1}
-	    } // else primitive type
-	    sid += 1;
-	  }
-          case c @ _ => sys.error("Unexpected character in type descriptor " + c)
-        }
-      }
-      
-      strDesc(sid+1) match {
-        case 'I' | 'Z' | 'B' | 'F' | 'S' | 'C' | 'L' | '[' => 1 - count
-        case 'J' | 'D' => 2 - count
-        case 'V' => 0 - count
-        case c @ _ => sys.error("Unexpected character in type descriptor " + c)
-      }
-      */
       methodSignatureToStackEffect(strDesc)
     }
     case _ => sys.error("getMethodEffect: no method ref info at given index.")
