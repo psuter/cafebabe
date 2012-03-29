@@ -20,7 +20,9 @@ class MethodHandler private[cafebabe](m: MethodInfo, c: CodeAttributeInfo, cp: C
   
   def setFlags(flags: U2): Unit = {
     if(ch.isDefined) {
-      // TODO prevent from changing static status !! 
+      if(m.isStatic != ((flags & Flags.METHOD_ACC_STATIC) != 0)) {
+        sys.error("Cannot change the `static` attribute of a method after its CodeHandler has been issued.")
+      }
     }
     m.accessFlags = flags
   }
