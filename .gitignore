@@ -4,3 +4,6 @@ target
 
 # Vim and others
 *.swp
+
+# Java classes
+*.class
