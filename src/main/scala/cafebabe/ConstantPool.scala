@@ -145,10 +145,11 @@ class ConstantPool extends Streamable {
   def getMethodEffect(idx: U2): Int = entryAt(idx) match {
     case CPMethodRefInfo(_, natid) => {
       val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
-      // really hacky "parser"
+      /*
+      // parsing code was refactored away in package object.
       var count = 0
       var sid = 1
-
+    
       while(strDesc(sid) != ')') {
         strDesc(sid) match {
           case 'I' | 'Z' | 'B' | 'F' | 'S' | 'C' => { count += 1; sid += 1 }
@@ -172,6 +173,8 @@ class ConstantPool extends Streamable {
         case 'V' => 0 - count
         case c @ _ => sys.error("Unexpected character in type descriptor " + c)
       }
+      */
+      methodSignatureToStackEffect(strDesc)
     }
     case _ => sys.error("getMethodEffect: no method ref info at given index.")
   }

@@ -4,7 +4,7 @@ package cafebabe
  * information that will be written to a <code>.class</code> file.  In the Java
  * model, that generally corresponds to one class (or interface) as declared in
  * source code, however this is by no means a restriction of the platform. */
-class ClassFile(val className: String, parentName: Option[String]) extends Streamable {
+class ClassFile(val className: String, parentName: Option[String] = None) extends Streamable {
   import ClassFileTypes._
   import Defaults._
     
@@ -56,9 +56,8 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
     new FieldHandler(inf, constantPool)
   }
   
-  /** Adds a method with arbitrarily many arguments, using the default flags and no */
-  def addMethod(retTpe: String, name: String, args: String*): MethodHandler =
-    addMethod(retTpe,name,args.toList)
+  /** Adds a method with arbitrarily many arguments, using the default flags and no attributes. */
+  def addMethod(retTpe: String, name: String, args: String*): MethodHandler = addMethod(retTpe,name,args.toList)
 
   def addMethod(retTpe: String, name: String, args: List[String]): MethodHandler = {
     val accessFlags: U2 = defaultMethodAccessFlags
@@ -69,15 +68,8 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
     methods = methods ::: (inf :: Nil)
 
     val concatArgs = args.mkString("")
-    
-    def countArgs(str: String): Int = if(str == "") 0 else str.charAt(0) match {
-      case 'I' | 'J' | 'Z' | 'B' | 'F' | 'D' => 1 + countArgs(str.substring(1))
-      case '[' => countArgs(str.substring(1))
-      case 'L' => 1 + countArgs(str.substring(str.indexOf(';') + 1))
-      case other @ _ => sys.error("Invalid character in method signature: " + other)
-    }
 
-    new MethodHandler(inf, code, constantPool, countArgs(concatArgs)+1)
+    new MethodHandler(inf, code, constantPool, concatArgs)
   }
   
   /** Adds the main method */
@@ -95,7 +87,7 @@ class ClassFile(val className: String, parentName: Option[String]) extends Strea
     val code = CodeAttributeInfo(codeNameIndex)
     val inf = MethodInfo(accessFlags, nameIndex, descriptorIndex, List(code))
     methods = methods ::: (inf :: Nil)
-    val mh = new MethodHandler(inf, code, constantPool, 1)
+    val mh = new MethodHandler(inf, code, constantPool, "")
     
     import ByteCodes._
     import AbstractByteCodes._

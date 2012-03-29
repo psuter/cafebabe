@@ -7,11 +7,22 @@ import ClassFileTypes._
  * specify a method's body. <code>MethodHandler</code>s should not be created
  * manually but rather obtained directly when adding a method to a
  * <code>ClassFile</code>. */
-class MethodHandler private[cafebabe](m: MethodInfo, c: CodeAttributeInfo, cp: ConstantPool, paramCount: Int) {
+class MethodHandler private[cafebabe](m: MethodInfo, c: CodeAttributeInfo, cp: ConstantPool, paramTypes: String) {
   private val method: MethodInfo = m
-  private val ch: CodeHandler = new CodeHandler(c,cp,paramCount)
+  private var ch : Option[CodeHandler] = None
   
-  def codeHandler = ch
+  def codeHandler : CodeHandler = {
+    if(ch.isEmpty) {
+      ch = Some(new CodeHandler(c, cp, paramTypes, m.isStatic))
+    }
+    ch.get
+  }
   
-  def setFlags(flags: U2): Unit = { m.accessFlags = flags }
+  def setFlags(flags: U2): Unit = {
+    if(ch.isDefined) {
+      // TODO prevent from changing static status !! 
+    }
+    m.accessFlags = flags
+  }
+
 }

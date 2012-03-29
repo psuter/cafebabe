@@ -5,7 +5,7 @@ package object cafebabe {
     var s : String = types
     var lst : List[Int] = Nil
     while(!s.isEmpty) {
-      val (c,ns) = byteCountRec(s)
+      val (c,_,ns) = parseRec(s)
       s = ns
       lst = c :: lst 
     } 
@@ -19,7 +19,7 @@ package object cafebabe {
     var s : String = types
     var c : Int = 0
     while(!s.isEmpty) {
-      val (inc,ns) = byteCountRec(s)
+      val (inc,_,ns) = parseRec(s)
       s = ns
       c += inc
     }
@@ -29,7 +29,7 @@ package object cafebabe {
   /** Returns the number of required to store a value of a given type, in JVM
     * notation. */
   def typeToByteCount(tpe : String) : Int = {
-    val (c,r) = byteCountRec(tpe)
+    val (c,_,r) = parseRec(tpe)
     if(!r.isEmpty) {
       sys.error("Malformed type (sub)string: " + r)
     }
@@ -43,21 +43,36 @@ package object cafebabe {
   }
 
   // the meat of the parser
-  private def byteCountRec(s : String) : (Int,String) = if(s.isEmpty)  (0,s) else {
+  private def parseRec(s : String) : (Int,String,String) = if(s.isEmpty)  (0,s,s) else {
     s.head match {
-      case 'B' | 'C' | 'F' | 'I' | 'S' | 'Z' => (1, s.tail)
-      case 'D' | 'J' => (2, s.tail)
+      case 'B' | 'C' | 'F' | 'I' | 'S' | 'Z' => (1, s.head.toString, s.tail)
+      case 'D' | 'J' => (2, s.head.toString, s.tail)
+      case 'V' => (0, s.head.toString, s.tail)  // can't really be an argument type.. Oh well.
       case 'L' => {
         val end = s.indexOf(';')
         if(end < 0) sys.error("Malformed type (sub)string: " + s)
-        (1, s.substring(end + 1, s.size))
+        (1, s.substring(0, end), s.substring(end + 1, s.size))
       }
       case '[' => {
         if(s.tail.isEmpty) sys.error("Malformed type string: incomplete array type.")
-        val (_, rest) = byteCountRec(s.tail)
-        (1, rest) 
+        val (_, ss, rest) = parseRec(s.tail)
+        (1, "[" + ss, rest) 
       }
       case _ => sys.error("Malformed type (sub)string: " + s)
     }
+  }
+
+  // This one I want to keep internal for now.. I don't think *returning*
+  // Strings representing JVM types is good practice. (reading them is OK I'd
+  // say).
+  private[cafebabe] def typesToTypesAndBytes(types : String) : Seq[(String,Int)] = {
+    var s : String = types
+    var lst : List[(String,Int)] = Nil
+    while(!s.isEmpty) {
+      val (c,ss,ns) = parseRec(s)
+      s = ns
+      lst = (ss,c) :: lst 
+    } 
+    lst.reverse
   }
 }

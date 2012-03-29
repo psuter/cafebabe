@@ -6,16 +6,17 @@ package cafebabe
  * Information is added to the constant pool during the ABS generation already.
  * <code>CodeHandler</code>s should not be created manually, but rather obtained
  * from the corresponding <code>MethodHandler</code>. */
-class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val paramCount: Int) {
+class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val paramTypes: String, val isStatic : Boolean) {
   import ClassFileTypes._
   import AbstractByteCodes._
   import ByteCodes._
   
   private val code: CodeAttributeInfo = c
   protected[cafebabe] val constantPool: ConstantPool = cp
-  // will be built backwards and reversed at the end
+  // will be built backwards and reversed at the end...
   private var abcList: List[AbstractByteCode] = Nil
   private var frozen: Boolean = false
+  protected[cafebabe] def isFrozen : Boolean = frozen
   
   private def append(abc: AbstractByteCode): Unit = if(!frozen) {
     abcList = abc :: abcList
@@ -30,14 +31,41 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     this
   }
   
-  // helpers to get slots
-  private var locals: Int = paramCount
-  private var freed: List[Int] = Nil
-  def getFreshVar: Int = freed match {
-    case Nil => { val ret = locals; locals += 1; ret }
-    case x :: xs => { freed = xs; x }
+  // Helpers to get slots.
+  private val argTypesAndBytes : Seq[(String,Int)] = {
+    val bc = typesToTypesAndBytes(paramTypes)
+    // that's a dirty trick, but this info is very private..
+    // only used for the ArgLoad ABC.
+    if(isStatic) bc else (("L;", 1) +: bc)
   }
-  def freeVar(id: Int): Unit = { freed = id :: freed }
+  protected[cafebabe] val argSlotMap : Map[Int,(String,Int)] = {
+    var acc : Int = 0
+    (for(((tpe,sz), arg) <- argTypesAndBytes.zipWithIndex) yield {
+      val s = acc
+      acc += sz
+      (arg, (tpe,s))
+    }).toMap
+  }
+  private var locals: Int = argTypesAndBytes.unzip._2.sum
+
+  /** Get a slot for a var that fits in one byte (all but `double` or `long`). */
+  def getFreshVar: Int = getFreshVar(1)
+
+  /** Get a slot for a var whose type has the JVM representation `tpe`. */
+  def getFreshVar(tpe : String) : Int = getFreshVar(typeToByteCount(tpe))
+
+  /** Get a slot for var that fits in `n` bytes. `n` must be `0` or `1`. */
+  def getFreshVar(n : Int) : Int = {
+    if(!(n == 1 || n == 2)) {
+      throw new IllegalArgumentException("Slot for variables can only be of 1 or 2 bytes.")
+    }
+    val ret = locals
+    locals += n
+    ret
+  }
+
+  @deprecated("freeVar no longer has any effect", "1.3")
+  def freeVar(id: Int): Unit = { }
   
   // helper to get fresh label names
   private var labelCounts = new scala.collection.mutable.HashMap[String,Int]
@@ -155,11 +183,17 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
           case _ => sys.error("Expected RawBytes after PUTSTATIC.")
         }
         case INVOKEVIRTUAL | INVOKESPECIAL => codeArray(pc+1) match {
-          case RawBytes(idx) => setHeight(from + 3, there + constantPool.getMethodEffect(idx) - 1)
+          case RawBytes(idx) => {
+            val se = constantPool.getMethodEffect(idx) - 1
+            setHeight(from + 3, there + se)
+          }
           case _ => sys.error("Expected RawBytes after INVOKEVIRTUAL/INVOKESPECIAL.")
         }
         case INVOKESTATIC => codeArray(pc+1) match {
-          case RawBytes(idx) => setHeight(from + 3, there + constantPool.getMethodEffect(idx))
+          case RawBytes(idx) => {
+            val se = constantPool.getMethodEffect(idx)
+            setHeight(from + 3, se)
+          }
           case _ => sys.error("Expected RawBytes after INVOKESTATIC.")
         }
         case g @ Goto(_) => setHeight(from + g.offset, there)
