@@ -1,10 +1,12 @@
 package cafebabe
 
-/** The code handler contains methods to help the generation of method bodies. 
+/** A code handler contains methods to help the generation of method bodies. 
  * The general usage is to generate abstract byte codes, then freeze the code,
  * which as a consequence generates the proper bytes in the CodeAttributeInfo.
- * Information is added to the constant pool during the ABS generation already.*/
-class CodeHandler(c: CodeAttributeInfo, cp: ConstantPool, val paramCount: Int) {
+ * Information is added to the constant pool during the ABS generation already.
+ * <code>CodeHandler</code>s should not be created manually, but rather obtained
+ * from the corresponding <code>MethodHandler</code>. */
+class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val paramCount: Int) {
   import ClassFileTypes._
   import AbstractByteCodes._
   import ByteCodes._
