@@ -179,6 +179,25 @@ object AbstractByteCodes {
   object FStore { def apply(index: Int) = storeLoad(index, "FStore", FSTORE, FSTORE_0, FSTORE_1, FSTORE_2, FSTORE_3) }
   object IStore { def apply(index: Int) = storeLoad(index, "IStore", ISTORE, ISTORE_0, ISTORE_1, ISTORE_2, ISTORE_3) }
   object LStore { def apply(index: Int) = storeLoad(index, "LStore", LSTORE, LSTORE_0, LSTORE_1, LSTORE_2, LSTORE_3) }
+
+// Some magic for loading locals.
+
+  object ArgLoad {
+    /** Loads an argument by its index in the argument list. 0 is the receiver
+      * for non-static methods. */
+    def apply(index : Int) : AbstractByteCodeGenerator = (ch : CodeHandler) => ch.argSlotMap.get(index) match {
+      case None => sys.error("Invalid argument index : " + index)
+      case Some((tpe,i)) => tpe match {
+        case "I" | "B" | "C" | "S" | "Z" => ch << ILoad(i)
+        case "F" => ch << FLoad(i)
+        case "J" => ch << LLoad(i)
+        case "D" => ch << DLoad(i)
+        case "V" => sys.error("Illegal argument of type `void` !?!")
+        case _  => ch << ALoad(i) // this is bold :)
+      }
+    }
+  }
+  
   
   // Field access
   object GetField  { def apply(className: String, fieldName: String, fieldType: String) = accessField(GETFIELD,  className, fieldName, fieldType) }
