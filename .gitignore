@@ -7,3 +7,10 @@ target
 
 # Java classes
 *.class
+
+# Eclipse classes
+.cache
+.classpath
+.project
+.settings
+
