@@ -7,8 +7,8 @@ package object cafebabe {
     while(!s.isEmpty) {
       val (c,_,ns) = parseRec(s)
       s = ns
-      lst = c :: lst 
-    } 
+      lst = c :: lst
+    }
     lst.reverse
   }
 
@@ -56,7 +56,7 @@ package object cafebabe {
       case '[' => {
         if(s.tail.isEmpty) sys.error("Malformed type string: incomplete array type.")
         val (_, ss, rest) = parseRec(s.tail)
-        (1, "[" + ss, rest) 
+        (1, "[" + ss, rest)
       }
       case _ => sys.error("Malformed type (sub)string: " + s)
     }
@@ -71,8 +71,8 @@ package object cafebabe {
     while(!s.isEmpty) {
       val (c,ss,ns) = parseRec(s)
       s = ns
-      lst = (ss,c) :: lst 
-    } 
+      lst = (ss,c) :: lst
+    }
     lst.reverse
   }
 }
