@@ -213,15 +213,13 @@ object AbstractByteCodes {
           ch.constantPool.addString(fieldName),
           ch.constantPool.addString(fieldType))))
   }
-  
-  // Method invocations
-  
-  // Not implemented yet. We should generate the two extra bytes properly ("count" and 0).
-  /* object InvokeInterface {
+
+  object InvokeInterface {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
-      invokeMethod(INVOKEINTERFACE, className, methodName, methodSig)
-  } */
-  
+      _ << invokeMethod(INVOKEINTERFACE, className, methodName, methodSig) <<
+           RawByte(methodSignatureArgStackEffect(methodSig) + 1) << RawByte(0)
+  }
+
   object InvokeSpecial {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
       invokeMethod(INVOKESPECIAL, className, methodName, methodSig)

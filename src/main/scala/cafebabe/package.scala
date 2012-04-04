@@ -41,6 +41,11 @@ package object cafebabe {
     case MethSigRE(args,ret) => typeToByteCount(ret) - typesToByteCount(args)
     case _ => sys.error("Malformed method signature: " + sig)
   }
+  private[cafebabe] def methodSignatureArgStackEffect(sig: String) : Int = sig match {
+    case MethSigRE(args,ret) =>
+      typesToByteCount(args) // does not account for 'this' since we don't know if this is static
+    case _ => sys.error("Malformed method signature: " + sig)
+  }
 
   // the meat of the parser
   private def parseRec(s : String) : (Int,String,String) = if(s.isEmpty)  (0,s,s) else {
