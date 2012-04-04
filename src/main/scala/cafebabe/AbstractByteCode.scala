@@ -3,13 +3,13 @@ package cafebabe
 object AbstractByteCodes {
   import ClassFileTypes._
   import ByteCodes._
-  
+
   trait AbstractByteCode extends Streamable {
     def size: Int
     def toStream(bs: ByteStream): ByteStream = sys.error("Abstract byte code cannot produce its own code. " + this)
   }
-  
-  /** Line numbers take no space in the actual bytecode. They are 
+
+  /** Line numbers take no space in the actual bytecode. They are
    * stored (at freeze-time) in the line number table and useful
    * for debugging and for meaningful stack-traces */
   case class LineNumber(line : Int) extends AbstractByteCode {
@@ -23,18 +23,18 @@ object AbstractByteCodes {
     override val size: Int = 0
     override def toStream(bs: ByteStream): ByteStream = bs
   }
-  
+
   // To put "raw bytes" in the stream
   case class RawByte(u1: U1) extends AbstractByteCode {
     override val size: Int = 1
     override def toStream(bs: ByteStream): ByteStream = bs << u1
   }
-  
+
   case class RawBytes(u2: U2) extends AbstractByteCode {
     override val size: Int = 2
     override def toStream(bs: ByteStream): ByteStream = bs << u2
   }
-  
+
   abstract class ControlOperator(val opCode: ByteCode) extends AbstractByteCode {
     def size: Int = 3
     val target: String
@@ -48,13 +48,13 @@ object AbstractByteCodes {
       }
     }
   }
-  
+
   // Branching operators. GOTO_W is unsupported for now.
   case class Goto(override val target: String) extends ControlOperator(GOTO) /*{
     var wide: Boolean = true
-    
+
     override def size: Int = if(wide) 5 else 3
-    
+
     override def toStream(bs: ByteStream): ByteStream = {
       if(wide) {
         bs << GOTO_W << offset.asInstanceOf[U4]
@@ -79,9 +79,9 @@ object AbstractByteCodes {
   case class If_ICmpGe(override val target: String) extends ControlOperator(IF_ICMPGE)
   case class If_ACmpEq(override val target: String) extends ControlOperator(IF_ACMPEQ)
   case class If_ACmpNe(override val target: String) extends ControlOperator(IF_ACMPNE)
-  
+
   type AbstractByteCodeGenerator = (CodeHandler => CodeHandler)
-  
+
   /** Generates code to load constants, using the appropriate method depending on the values. */
   object Ldc {
     def apply(i: Int): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
@@ -98,7 +98,7 @@ object AbstractByteCodes {
         case _ => ch << ldc_ref(ch.constantPool.addInt(i))
       }
     })
-    
+
     def apply(f: Float): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       f match {
         case 0.0f => ch << FCONST_0
@@ -107,7 +107,7 @@ object AbstractByteCodes {
         case _ => ch << ldc_ref(ch.constantPool.addFloat(f))
       }
     })
-    
+
     def apply(d: Double): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       d match {
         case 0.0 => ch << DCONST_0
@@ -115,7 +115,7 @@ object AbstractByteCodes {
         case _ => ch << ldc2_ref(ch.constantPool.addDouble(d))
       }
     })
-    
+
     def apply(l: Long): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       l match {
         case 0l => ch << LCONST_0
@@ -123,11 +123,11 @@ object AbstractByteCodes {
         case _ => ch << ldc2_ref(ch.constantPool.addLong(l))
       }
     })
-    
+
     def apply(s: String): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       ch << ldc_ref(ch.constantPool.addStringConstant(ch.constantPool.addString(s)))
     })
-    
+
     private def ldc_ref(cpRef: U2): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       if(cpRef <= 0xFF) {
         ch << LDC << RawByte((cpRef & 0xFF).asInstanceOf[U1])
@@ -135,12 +135,12 @@ object AbstractByteCodes {
         ch << LDC_W << RawBytes(cpRef)
       }
     })
-    
+
     private def ldc2_ref(cpRef: U2): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       ch << LDC2_W << RawBytes(cpRef)
     })
   }
-  
+
   // IINC business
   object IInc {
     def apply(index: Int, inc: Int): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
@@ -153,7 +153,7 @@ object AbstractByteCodes {
       }
     })
   }
-  
+
   // Loading and storing locals
   private def storeLoad(index: Int, name: String, bc: ByteCode,
                         bc0: ByteCode, bc1: ByteCode,
@@ -168,14 +168,14 @@ object AbstractByteCodes {
       case _ => sys.error("Invalid index in " + name + " " + index)
     }
   }
-  
+
   object ALoad { def apply(index: Int) = storeLoad(index, "ALoad", ALOAD, ALOAD_0, ALOAD_1, ALOAD_2, ALOAD_3) }
   object DLoad { def apply(index: Int) = storeLoad(index, "DLoad", DLOAD, DLOAD_0, DLOAD_1, DLOAD_2, DLOAD_3) }
   object FLoad { def apply(index: Int) = storeLoad(index, "FLoad", FLOAD, FLOAD_0, FLOAD_1, FLOAD_2, FLOAD_3) }
   object ILoad { def apply(index: Int) = storeLoad(index, "ILoad", ILOAD, ILOAD_0, ILOAD_1, ILOAD_2, ILOAD_3) }
   object LLoad { def apply(index: Int) = storeLoad(index, "LLoad", LLOAD, LLOAD_0, LLOAD_1, LLOAD_2, LLOAD_3) }
-  object AStore { def apply(index: Int) = storeLoad(index, "AStore", ASTORE, ASTORE_0, ASTORE_1, ASTORE_2, ASTORE_3) } 
-  object DStore { def apply(index: Int) = storeLoad(index, "DStore", DSTORE, DSTORE_0, DSTORE_1, DSTORE_2, DSTORE_3) } 
+  object AStore { def apply(index: Int) = storeLoad(index, "AStore", ASTORE, ASTORE_0, ASTORE_1, ASTORE_2, ASTORE_3) }
+  object DStore { def apply(index: Int) = storeLoad(index, "DStore", DSTORE, DSTORE_0, DSTORE_1, DSTORE_2, DSTORE_3) }
   object FStore { def apply(index: Int) = storeLoad(index, "FStore", FSTORE, FSTORE_0, FSTORE_1, FSTORE_2, FSTORE_3) }
   object IStore { def apply(index: Int) = storeLoad(index, "IStore", ISTORE, ISTORE_0, ISTORE_1, ISTORE_2, ISTORE_3) }
   object LStore { def apply(index: Int) = storeLoad(index, "LStore", LSTORE, LSTORE_0, LSTORE_1, LSTORE_2, LSTORE_3) }
@@ -197,14 +197,14 @@ object AbstractByteCodes {
       }
     }
   }
-  
-  
+
+
   // Field access
   object GetField  { def apply(className: String, fieldName: String, fieldType: String) = accessField(GETFIELD,  className, fieldName, fieldType) }
   object GetStatic { def apply(className: String, fieldName: String, fieldType: String) = accessField(GETSTATIC, className, fieldName, fieldType) }
   object PutField  { def apply(className: String, fieldName: String, fieldType: String) = accessField(PUTFIELD,  className, fieldName, fieldType) }
   object PutStatic { def apply(className: String, fieldName: String, fieldType: String) = accessField(PUTSTATIC, className, fieldName, fieldType) }
-  
+
   private def accessField(bc: ByteCode, className: String, fieldName: String, fieldType: String): AbstractByteCodeGenerator =
     (ch: CodeHandler) => {
       ch << bc << RawBytes(ch.constantPool.addFieldRef(
@@ -213,6 +213,8 @@ object AbstractByteCodes {
           ch.constantPool.addString(fieldName),
           ch.constantPool.addString(fieldType))))
   }
+
+  // Method invocations
 
   object InvokeInterface {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
@@ -224,17 +226,17 @@ object AbstractByteCodes {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
       invokeMethod(INVOKESPECIAL, className, methodName, methodSig)
   }
-  
+
   object InvokeStatic {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
       invokeMethod(INVOKESTATIC, className, methodName, methodSig)
   }
-  
+
   object InvokeVirtual {
     def apply(className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator =
       invokeMethod(INVOKEVIRTUAL, className, methodName, methodSig)
   }
-  
+
   private def invokeMethod(bc: ByteCode, className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator = {
     (ch: CodeHandler) => {
       ch << bc << RawBytes(ch.constantPool.addMethodRef(
@@ -244,9 +246,9 @@ object AbstractByteCodes {
           ch.constantPool.addString(methodSig))))
     }
   }
-  
+
   // misc
-  
+
   object New {
     def apply(className: String) : AbstractByteCodeGenerator = {
       (ch: CodeHandler) => {
@@ -270,7 +272,7 @@ object AbstractByteCodes {
       }
     }
   }
-  
+
   object CheckCast {
     def apply(className: String): AbstractByteCodeGenerator = {
       (ch: CodeHandler) => {
