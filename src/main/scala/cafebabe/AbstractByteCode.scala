@@ -239,7 +239,8 @@ object AbstractByteCodes {
 
   private def invokeMethod(bc: ByteCode, className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator = {
     (ch: CodeHandler) => {
-      ch << bc << RawBytes(ch.constantPool.addMethodRef(
+      val addMethodRef = if (bc == INVOKEINTERFACE) ch.constantPool.addInterfaceMethodRef _ else ch.constantPool.addMethodRef _
+      ch << bc << RawBytes(addMethodRef(
         ch.constantPool.addClass(ch.constantPool.addString(className)),
         ch.constantPool.addNameAndType(
           ch.constantPool.addString(methodName),

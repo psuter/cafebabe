@@ -99,6 +99,11 @@ class ConstantPool extends Streamable {
     methodRefMap += ((classID,natID) -> idx)
     idx
   })
+  def addInterfaceMethodRef(classID: U2, natID: U2): U2 = methodRefMap.getOrElse((classID,natID), {
+    val idx = addEntry(CPInterfaceMethodRefInfo(classID,natID))
+    methodRefMap += ((classID,natID) -> idx)
+    idx
+  })
   def addNameAndType(nameID: U2, typeID: U2): U2 = nameAndTypeMap.getOrElse((nameID,typeID), {
     val idx = addEntry(CPNameAndTypeInfo(nameID,typeID))
     nameAndTypeMap += ((nameID,typeID) -> idx)
