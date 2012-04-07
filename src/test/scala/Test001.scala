@@ -27,7 +27,7 @@ class Test001 extends FunSuite with ShouldMatchers {
       result should equal("Hello world!")
     } catch {
       case e => {
-        println(e) 
+        println(e)
         true should equal(false)
       }
     }

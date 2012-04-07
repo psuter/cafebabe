@@ -2,9 +2,9 @@ package cafebabe
 
 class ConstantPool extends Streamable {
   import ClassFileTypes._
-  
+
   import scala.collection.mutable.HashMap
-  
+
   /** The following maps keep track of the constants already added to the pool to avoid duplicates. */
   private val intMap: HashMap[Int,U2]       = new HashMap[Int,U2]
   private val floatMap: HashMap[Float,U2]   = new HashMap[Float,U2]
@@ -16,15 +16,15 @@ class ConstantPool extends Streamable {
   private val fieldRefMap: HashMap[(U2,U2),U2] = new HashMap[(U2,U2),U2]
   private val methodRefMap: HashMap[(U2,U2),U2] = new HashMap[(U2,U2),U2]
   private val nameAndTypeMap: HashMap[(U2,U2),U2] = new HashMap[(U2,U2),U2]
-  
+
   /** The list of all entries in that constant pool. */
   private var entries: List[CPEntry] = Nil
-  
+
   /** Returns the number of entries. */
   def size: U2 = entries.length
-  
+
   private var nextIndex: U2 = 1
-  
+
   /** Adds an entry into the constant pool and returns its index. */
   private def addEntry(entry: CPEntry): U2 = {
     entries = entries ::: (entry :: Nil)
@@ -36,7 +36,7 @@ class ConstantPool extends Streamable {
     })
     ret
   }
-  
+
   /** Finds the nth entry. */
   private def entryAt(idx: Int): CPEntry = {
     def ea(idx: Int, lst: List[CPEntry]): CPEntry = {
@@ -46,10 +46,10 @@ class ConstantPool extends Streamable {
         case _ => ea(idx - 1, lst.tail)
       }
     }
-    
+
     ea(idx-1, entries)
   }
-  
+
   /** The following methods add constants to the pool, using hashmaps to avoid duplicates and properly encoding the values. */
   def addInt(i: Int): U2 = intMap.getOrElse(i, {
     val idx = addEntry(CPIntegerInfo(encodeInt(i)))
@@ -61,7 +61,7 @@ class ConstantPool extends Streamable {
     floatMap += (f -> idx)
     idx
   })
-  
+
   def addLong(l: Long): U2 = longMap.getOrElse(l, {
     val enc = encodeLong(l)
     val idx = addEntry(CPLongInfo(enc._1, enc._2))
@@ -109,7 +109,7 @@ class ConstantPool extends Streamable {
     nameAndTypeMap += ((nameID,typeID) -> idx)
     idx
   })
-  
+
   /** The following methods encode numerical values into their byte representation. */
   private def encodeInt(i: Int): U4 = i
   private def encodeFloat(f: Float): U4 = java.lang.Float.floatToIntBits(f)
@@ -120,7 +120,7 @@ class ConstantPool extends Streamable {
   private def encodeString(s: String): Seq[U1] = {
     import scala.collection.mutable.ArrayBuffer
     val bytes = ArrayBuffer.empty[U1]
-    
+
     for(c: Char <- s) {
       if(c >= 0x0001 && c <= 0x007F) {
         bytes.append(c)
@@ -131,11 +131,11 @@ class ConstantPool extends Streamable {
       } else {
         bytes.append(0xC0 | ((c >>> 6) & 0x1F))
         bytes.append(0x80 |         (c & 0x3F))
-      }        
+      }
     }
     bytes
   }
-  
+
   def getFieldSize(idx: U2): Int = entryAt(idx) match {
     case CPFieldRefInfo(_, natid) => {
       val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
@@ -146,7 +146,7 @@ class ConstantPool extends Streamable {
     }
     case _ => sys.error("getFieldSize: no field info at given index.")
   }
-  
+
   def getMethodEffect(idx: U2): Int = entryAt(idx) match {
     case CPMethodRefInfo(_, natid) => {
       val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
@@ -154,7 +154,7 @@ class ConstantPool extends Streamable {
     }
     case _ => sys.error("getMethodEffect: no method ref info at given index.")
   }
-  
+
   def toStream(stream: ByteStream): ByteStream = {
     stream << nextIndex.asInstanceOf[U2] << entries
   }

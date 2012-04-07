@@ -3,16 +3,16 @@ package cafebabe
 object ByteCodes {
   import ClassFileTypes._
   import AbstractByteCodes._
-  
+
   sealed abstract class ByteCode(val code: U1, se: Option[Int], l: Option[Int]) extends AbstractByteCode {
     val size: Int = 1
     val stackEffect: Option[Int] = se
     val length: Option[Int] = l
     override def toStream(bs: ByteStream): ByteStream = bs << code
   }
-  
+
   private implicit def intToOptionInt(i: Int) = Some(i)
-  
+
   case object AALOAD extends ByteCode(0x32, -1, 1)
   case object AASTORE extends ByteCode(0x53, -3, 1)
   case object ACONST_NULL extends ByteCode(0x1, 1, 1)
