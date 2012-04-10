@@ -14,7 +14,7 @@ class CodeAttributeInfo(val codeNameIndex: U2) extends AttributeInfo(codeNameInd
   var maxStack: U2 = 0  // gets set when the code handler 'freezes'
   var maxLocals: U2 = 0 // gets set when the code handler 'freezes'
   var code: ByteStream = new ByteStream
-  
+
   case class ExceptionTableEntry(startPC: U2, endPC: U2, handlerPC: U2, catchType: U2) extends Streamable {
     override def toStream(stream: ByteStream) = stream
   }
@@ -31,11 +31,11 @@ class CodeAttributeInfo(val codeNameIndex: U2) extends AttributeInfo(codeNameInd
     stream << exceptionTableLength << exceptionTable
     stream << attributesCount << attributes
   }
-  
+
   private def attributesSize: Int = {
     attributes.foldLeft[Int](0)((s:Int, c:AttributeInfo) => { s + c.size })
   }
-  
+
   override def size: Int = {
     18 + code.size + (exceptionTable.size * 8) + attributesSize
   }

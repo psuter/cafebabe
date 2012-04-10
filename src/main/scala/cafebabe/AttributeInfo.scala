@@ -3,7 +3,7 @@ package cafebabe
 import ClassFileTypes._
 
 object AttributeInfo {
-  def apply(attributeNameIndex: U2, info: Seq[U1]) : AttributeInfo = 
+  def apply(attributeNameIndex: U2, info: Seq[U1]) : AttributeInfo =
     new AttributeInfo(attributeNameIndex, info)
 
   def unapply(ai: AttributeInfo) : Option[(U2,Seq[U1])] =
@@ -17,7 +17,7 @@ class AttributeInfo(val attributeNameIndex: U2, val info: Seq[U1]) extends Strea
     info.foreach(stream << _)
     stream
   }
-  
+
   def size: Int = 6 + info.size
 }
 
