@@ -10,14 +10,14 @@ import ClassFileTypes._
 class MethodHandler private[cafebabe](m: MethodInfo, c: CodeAttributeInfo, cp: ConstantPool, paramTypes: String) {
   private val method: MethodInfo = m
   private var ch : Option[CodeHandler] = None
-  
+
   def codeHandler : CodeHandler = {
     if(ch.isEmpty) {
       ch = Some(new CodeHandler(c, cp, paramTypes, m.isStatic))
     }
     ch.get
   }
-  
+
   def setFlags(flags: U2): Unit = {
     if(ch.isDefined) {
       if(m.isStatic != ((flags & Flags.METHOD_ACC_STATIC) != 0)) {

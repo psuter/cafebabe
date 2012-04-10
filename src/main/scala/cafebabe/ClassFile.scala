@@ -7,7 +7,7 @@ package cafebabe
 class ClassFile(val className: String, parentName: Option[String] = None) extends Streamable {
   import ClassFileTypes._
   import Defaults._
-    
+
   private var magic: U4 = defaultMagic
   private var minor: U2 = defaultMinor
   private var major: U2 = defaultMajor
@@ -17,24 +17,24 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
   private lazy val sourceFileNameIndex: U2 = constantPool.addString("SourceFile")
 
   private var accessFlags: U2 = defaultClassAccessFlags
-  
+
   private val thisClass: U2 = constantPool.addClass(constantPool.addString(className))
-  
+
   private val superClassName: String = parentName match {
     case None => "java/lang/Object"
     case Some(name) => name
   }
   private var superClass: U2 = constantPool.addClass(constantPool.addString(superClassName))
-  
+
   private var fields: List[FieldInfo] = Nil
   private var methods: List[MethodInfo] = Nil
-  
+
   // TODO
   private var interfacesCount: U2 = 0
   private var interfaces: List[U1] = Nil
 
   private var attributes : List[AttributeInfo] = Nil
-  
+
   private var _srcNameWasSet = false
   /** Attaches the name of the original source file to the class file. */
   def setSourceFile(sf : String) : Unit = {
@@ -55,7 +55,7 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
     fields = fields ::: (inf :: Nil)
     new FieldHandler(inf, constantPool)
   }
-  
+
   /** Adds a method with arbitrarily many arguments, using the default flags and no attributes. */
   def addMethod(retTpe: String, name: String, args: String*): MethodHandler = addMethod(retTpe,name,args.toList)
 
@@ -71,14 +71,14 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
 
     new MethodHandler(inf, code, constantPool, concatArgs)
   }
-  
+
   /** Adds the main method */
   def addMainMethod: MethodHandler = {
     val handler = addMethod("V", "main", "[Ljava/lang/String;")
     handler.setFlags(Flags.METHOD_ACC_PUBLIC | Flags.METHOD_ACC_STATIC)
     handler
   }
-  
+
   /** Adds a default constructor. */
   def addDefaultConstructor: MethodHandler = {
     val accessFlags: U2 = Flags.METHOD_ACC_PUBLIC
@@ -88,17 +88,17 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
     val inf = MethodInfo(accessFlags, nameIndex, descriptorIndex, List(code))
     methods = methods ::: (inf :: Nil)
     val mh = new MethodHandler(inf, code, constantPool, "")
-    
+
     import ByteCodes._
     import AbstractByteCodes._
-    
+
     mh.codeHandler << ALOAD_0
     mh.codeHandler << InvokeSpecial(superClassName, constructorName, constructorSig)
     mh.codeHandler << RETURN
     mh.codeHandler.freeze
     mh
   }
-    
+
   /** Writes the binary representation of this class file to a file. */
   def writeToFile(fileName : String) : Unit = {
     // The stream we'll ultimately use to write the class file data
@@ -116,7 +116,7 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
     CustomClassLoader.registerClass(className, bytes)
     */
   }
-  
+
   def toStream(byteStream: ByteStream): ByteStream = {
     byteStream <<
       magic <<
@@ -132,7 +132,7 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
       attributes.size.asInstanceOf[U2] << attributes
 
   }
-  
+
   def stringToDescriptor(s: String) = s
 }
 

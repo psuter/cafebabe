@@ -4,7 +4,7 @@ import ClassFileTypes._
 
 object CPTags {
   import ClassFileTypes._
-  
+
   val Class: U1              = 7
   val Fieldref: U1           = 9
   val Methodref: U1          = 10
@@ -82,10 +82,10 @@ case class CPNameAndTypeInfo(val nameIndex: U2, val descriptorIndex: U2) extends
 
 case class CPUtf8Info(val bytes: Seq[U1]) extends CPEntry(CPTags.Utf8) {
   private var original: String = _
-  
+
   def setSource(str: String): CPUtf8Info = { original = str; this }
   def getSource: String = original
-  
+
   override def toStream(stream: ByteStream): ByteStream = {
     stream << tag << bytes.length.asInstanceOf[U2]
     bytes.foreach(b => { stream << b })

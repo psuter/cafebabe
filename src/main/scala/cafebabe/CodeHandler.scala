@@ -1,6 +1,6 @@
 package cafebabe
 
-/** A code handler contains methods to help the generation of method bodies. 
+/** A code handler contains methods to help the generation of method bodies.
  * The general usage is to generate abstract byte codes, then freeze the code,
  * which as a consequence generates the proper bytes in the CodeAttributeInfo.
  * Information is added to the constant pool during the ABS generation already.
@@ -10,27 +10,27 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
   import ClassFileTypes._
   import AbstractByteCodes._
   import ByteCodes._
-  
+
   private val code: CodeAttributeInfo = c
   protected[cafebabe] val constantPool: ConstantPool = cp
   // will be built backwards and reversed at the end...
   private var abcList: List[AbstractByteCode] = Nil
   private var frozen: Boolean = false
   protected[cafebabe] def isFrozen : Boolean = frozen
-  
+
   private def append(abc: AbstractByteCode): Unit = if(!frozen) {
     abcList = abc :: abcList
   }
-  
+
   def <<(abcGen: AbstractByteCodeGenerator): CodeHandler = {
     abcGen(this)
   }
-     
+
   def <<(abc: AbstractByteCode): CodeHandler = {
     append(abc)
     this
   }
-  
+
   // Helpers to get slots.
   private val argTypesAndBytes : Seq[(String,Int)] = {
     val bc = typesToTypesAndBytes(paramTypes)
@@ -66,7 +66,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
 
   @deprecated("freeVar no longer has any effect", "1.3")
   def freeVar(id: Int): Unit = { }
-  
+
   // helper to get fresh label names
   private var labelCounts = new scala.collection.mutable.HashMap[String,Int]
   def getFreshLabel(prefix: String): String = {
@@ -78,7 +78,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     labelCounts(prefix) = postfix + 1
     name
   }
-  
+
   /** "Freezes" the code: maxLocals is computed, abstract byte codes are turned
    *  into concrete ones. This includes computation of the label offsets. */
   def freeze: Unit = if(frozen) {} else {
@@ -86,7 +86,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     abcList = abcList.reverse
     frozen = true
     code.maxLocals = locals
- 
+
     var pc: Int = 0
     // In the first pass, we collect the positions of all labels.
     // We also store line numbers information.
@@ -105,7 +105,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
       }
       pc = pc + abc.size
     }
-    
+
     // in the second pass, we set the jump offsets.
     pc = 0
     for(abc <- abcList) {
@@ -117,7 +117,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
       }
       pc = pc + abc.size
     }
-    
+
     // we build the line number table.
     if(!lineInfo.isEmpty) {
       val lnta = new LineNumberTableAttributeInfo(constantPool.addString("LineNumberTable"))
@@ -127,21 +127,21 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
 
     // we now compute the maximum stack height.
     code.maxStack = computeMaxStack(abcList)
-    
+
     // finally, we dump the code.
     abcList.foreach(code.code << _)
   }
-  
+
   def computeMaxStack(abcList: List[AbstractByteCode]): U2 = {
     var actualSize = abcList.map(_.size).foldLeft(0)(_+_)
     var codeArray = new Array[AbstractByteCode](actualSize)
-    
+
     var pc = 0
     abcList.foreach(abc => { codeArray(pc) = abc; pc += abc.size })
-      
+
     val heightArray = new Array[Int](actualSize)
     for(i <- (0 until actualSize)) { heightArray(i) = -99 }
-      
+
     def setHeight(from: Int, there: Int): Unit = {
       if(there < 0) { print0(abcList); sys.error("Negative stack height at pc=" + from + " (which is " + codeArray(from) + ")") }
       if(heightArray(from) != -99) {
@@ -154,7 +154,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
       }
       var pc = from
       heightArray(pc) = there
-        
+
       codeArray(pc) match {
         case WIDE => sys.error("Wide is unsupported for now.")
         case RETURN => if(there != 0) sys.error("Non-empty stack after return in void method")
@@ -204,20 +204,20 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
         case other @ _ => sys.error("Computation of stack height unsupported for " + other)
       }
     }
-      
+
     setHeight(0, 0)
     val max: Int = heightArray.max
     max.asInstanceOf[U2]
   }
-  
-  def print: Unit = if(!frozen) print0(abcList.reverse) 
-    
+
+  def print: Unit = if(!frozen) print0(abcList.reverse)
+
   private def print0(seq: Seq[AbstractByteCode]): Unit = {
     seq.foreach(_ match {
       case Label(name) => println(name + ":")
-      case other @ _ => println("    " + other) 
+      case other @ _ => println("    " + other)
     })
   }
-  
+
 
 }
