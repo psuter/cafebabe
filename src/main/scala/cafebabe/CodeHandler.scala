@@ -192,7 +192,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
         case INVOKESTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => {
             val se = constantPool.getMethodEffect(idx)
-            setHeight(from + 3, se)
+            setHeight(from + 3, there + se)
           }
           case _ => sys.error("Expected RawBytes after INVOKESTATIC.")
         }
