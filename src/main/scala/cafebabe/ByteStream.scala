@@ -10,7 +10,7 @@ class ByteStream {
   import ClassFileTypes._
 
   private var bytes = new ByteArrayOutputStream
-  protected[cafebabe] def getBytes : Array[Byte] = bytes.toByteArray
+  def getBytes : Array[Byte] = { stream.flush() ; bytes.toByteArray }
   private var stream: DataOutputStream = new DataOutputStream(bytes)
 
   // appends bytes to the stream
