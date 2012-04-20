@@ -152,6 +152,10 @@ class ConstantPool extends Streamable {
       val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
       methodSignatureToStackEffect(strDesc)
     }
+    case CPInterfaceMethodRefInfo(_, natid) => {
+      val strDesc: String = entryAt(entryAt(natid).asInstanceOf[CPNameAndTypeInfo].descriptorIndex).asInstanceOf[CPUtf8Info].getSource
+      methodSignatureToStackEffect(strDesc)
+    }
     case _ => sys.error("getMethodEffect: no method ref info at given index.")
   }
 
