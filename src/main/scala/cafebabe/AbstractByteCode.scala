@@ -128,6 +128,10 @@ object AbstractByteCodes {
       ch << ldc_ref(ch.constantPool.addStringConstant(ch.constantPool.addString(s)))
     })
 
+    def apply(c: Class[_]): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
+      ch << ldc_ref(ch.constantPool.addClass(ch.constantPool.addString(c.getName().replaceAll("\\.", "/"))))
+    })
+
     private def ldc_ref(cpRef: U2): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       if(cpRef <= 0xFF) {
         ch << LDC << RawByte((cpRef & 0xFF).asInstanceOf[U1])
