@@ -189,6 +189,20 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
           }
           case _ => sys.error("Expected RawBytes after INVOKEVIRTUAL/INVOKESPECIAL.")
         }
+        case INVOKEINTERFACE => codeArray(pc+1) match {
+          case RawBytes(idx) => codeArray(pc+3) match {
+            case RawByte(n) => {
+              val se = constantPool.getMethodEffect(idx)
+              codeArray(pc+4) match {
+                case RawByte(0) => setHeight(from + 5, there + se - 1)
+                case _ => sys.error("Expected RawByte(0) as the last param for INVOKEINTERFACE")
+              }
+            }
+            case b => sys.error("Expected RawByte after the RawBytes in INVOKEINTERFACE @ " + pc + " ; found: " + b)
+
+          }
+          case _ => sys.error("Expected RawBytes after INVOKEINTERFACE.")
+        }
         case INVOKESTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => {
             val se = constantPool.getMethodEffect(idx)
