@@ -109,12 +109,9 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
 
   /** Loads the class using the current class loader. */
   def dynamicallyLoad : Unit = {
-    throw new Error("Not supported yet.")
-    /*
     val byteStream = (new ByteStream) << this
     val bytes : Array[Byte] = byteStream.getBytes
     CustomClassLoader.registerClass(className, bytes)
-    */
   }
 
   def toStream(byteStream: ByteStream): ByteStream = {
