@@ -1,5 +1,8 @@
 package cafebabe
 
+import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{Map=>MutableMap}
+
 /** A code handler contains methods to help the generation of method bodies.
  * The general usage is to generate abstract byte codes, then freeze the code,
  * which as a consequence generates the proper bytes in the CodeAttributeInfo.
@@ -14,12 +17,12 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
   private val code: CodeAttributeInfo = c
   protected[cafebabe] val constantPool: ConstantPool = cp
   // will be built backwards and reversed at the end...
-  private var abcList: List[AbstractByteCode] = Nil
-  private var frozen: Boolean = false
+  private val abcBuffer : ListBuffer[AbstractByteCode] = ListBuffer.empty
+  private var frozen : Boolean = false
   protected[cafebabe] def isFrozen : Boolean = frozen
 
   private def append(abc: AbstractByteCode): Unit = if(!frozen) {
-    abcList = abc :: abcList
+    abcBuffer += abc
   }
 
   def <<(abcGen: AbstractByteCodeGenerator): CodeHandler = {
@@ -67,7 +70,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
   @deprecated("freeVar no longer has any effect", "1.3")
   def freeVar(id: Int): Unit = { }
 
-  // helper to get fresh label names
+  // Helper to get fresh label names.
   private var labelCounts = new scala.collection.mutable.HashMap[String,Int]
   def getFreshLabel(prefix: String): String = {
     val postfix: Int = labelCounts.getOrElse(prefix, {
@@ -81,41 +84,49 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
 
   /** "Freezes" the code: maxLocals is computed, abstract byte codes are turned
    *  into concrete ones. This includes computation of the label offsets. */
-  def freeze: Unit = if(frozen) {} else {
-    import scala.collection.mutable.{Map=>MutableMap}
-    abcList = abcList.reverse
+  def freeze : Unit = if(frozen) {
+    throw CodeFreezingException(
+      "Cannot invoke `freeze` twice on the same CodeHandler.")
+  } else {
     frozen = true
+
+    val abcList = abcBuffer.toList
     code.maxLocals = locals
 
-    var pc: Int = 0
-    // In the first pass, we collect the positions of all labels.
-    // We also store line numbers information.
-    var lastLineNumber : Int = Int.MaxValue
     val labels : MutableMap[String,Int] = MutableMap.empty
     val lineInfo : MutableMap[Int,Int] = MutableMap.empty
-    for(abc <- abcList) {
-      abc match {
-        case LineNumber(ln) if ln == lastLineNumber => ;
-        case LineNumber(ln) => {
-          lastLineNumber = ln
-          lineInfo(pc) = ln
+
+    // In the first pass, we collect the positions of all labels.
+    // We also store line numbers information.
+    locally {
+      var pc: Int = 0
+      var lastLineNumber : Int = Int.MaxValue
+      for(abc <- abcList) {
+        abc match {
+          case LineNumber(ln) if ln == lastLineNumber => ;
+          case LineNumber(ln) => {
+            lastLineNumber = ln
+            lineInfo(pc) = ln
+          }
+          case Label(name) => labels(name) = pc
+          case _ => ;
         }
-        case Label(name) => labels(name) = pc
-        case _ => ;
+        pc = pc + abc.size
       }
-      pc = pc + abc.size
     }
 
-    // in the second pass, we set the jump offsets.
-    pc = 0
-    for(abc <- abcList) {
-      abc match {
-        case co: ControlOperator => {
-          co.offset = (labels.getOrElse(co.target, 0) - pc)
+    // In the second pass, we set the jump offsets.
+    locally {
+      var pc : Int = 0
+      for(abc <- abcList) {
+        abc match {
+          case co: ControlOperator => {
+            co.offset = (labels.getOrElse(co.target, 0) - pc)
+          }
+          case _ => ;
         }
-        case _ => ;
+        pc = pc + abc.size
       }
-      pc = pc + abc.size
     }
 
     // we build the line number table.
@@ -132,62 +143,74 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     abcList.foreach(code.code << _)
   }
 
-  def computeMaxStack(abcList: List[AbstractByteCode]): U2 = {
-    var actualSize = abcList.map(_.size).foldLeft(0)(_+_)
-    var codeArray = new Array[AbstractByteCode](actualSize)
+  def computeMaxStack(abcList : List[AbstractByteCode]) : U2 = {
+    // This should get called exactly once, at freezing time.
+    assert(frozen)
 
-    var pc = 0
-    abcList.foreach(abc => { codeArray(pc) = abc; pc += abc.size })
+    val actualSize = abcList.map(_.size).sum
+    val codeArray = new Array[AbstractByteCode](actualSize)
 
-    val heightArray = new Array[Int](actualSize)
-    for(i <- (0 until actualSize)) { heightArray(i) = -99 }
+    locally {
+      var pc = 0
+      for(abc <- abcList) {
+        codeArray(pc) = abc
+        pc += abc.size
+      }
+    }
 
+    val UninitializedHeight : Int = Int.MinValue
+    val heightArray = Array.fill[Int](actualSize)(UninitializedHeight)
+
+    // An invocation of this function reads as "when the pc reaches `from`, the stack height should be `there`".
     def setHeight(from: Int, there: Int): Unit = {
-      if(there < 0) { print0(abcList); sys.error("Negative stack height at pc=" + from + " (which is " + codeArray(from) + ")") }
-      if(heightArray(from) != -99) {
-        if(heightArray(from) == there) {
+      if(from < 0 || from >= actualSize)
+        throw CodeFreezingException("No bytecode at pc=" + from + ". Missing instructions?", abcList)
+
+      if(there < 0)
+        throw CodeFreezingException("Negative stack height at pc=" + from + " (which is " + codeArray(from) + ").", abcList)
+
+      if(heightArray(from) != UninitializedHeight) { // If another paths led to the same pc.
+        if(heightArray(from) == there) { 
           return
         } else {
-          print0(abcList)
-          sys.error("Inconsistent stack height at pc=" + from + "(" + heightArray(from) + " and " + there + ")")
+          throw CodeFreezingException("Inconsistent stack height at pc=" + from + "(" + heightArray(from) + " and " + there + ")", abcList)
         }
       }
-      var pc = from
+
+      val pc = from
       heightArray(pc) = there
 
       codeArray(pc) match {
         case WIDE => sys.error("Wide is unsupported for now.")
-        case RETURN => if(there != 0) sys.error("Non-empty stack after return in void method")
+        case RETURN => if(there != 0) throw CodeFreezingException("Non-empty stack after return in void method")
         case ARETURN | DRETURN | FRETURN | IRETURN | LRETURN => {
           if(there + codeArray(pc).asInstanceOf[ByteCode].stackEffect.get != 0)
-            sys.error("Stack not empty after return.")
+            throw CodeFreezingException("Stack not empty after return.")
         }
         case bc: ByteCode if !bc.stackEffect.isEmpty => setHeight(from + bc.length.get, there + bc.stackEffect.get)
         case GETFIELD => codeArray(pc+1) match {
           case RawBytes(idx) => setHeight(from + 3, (there + constantPool.getFieldSize(idx)) - 1)
-          case _ => sys.error("Expected RawBytes after GETFIELD.")
+          case _ => throw CodeFreezingException("Expected RawBytes after GETFIELD.")
         }
         case GETSTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => setHeight(from + 3, there + constantPool.getFieldSize(idx))
-          case _ => sys.error("Expected RawBytes after GETSTATIC.")
+          case _ => throw CodeFreezingException("Expected RawBytes after GETSTATIC.")
         }
         case PUTFIELD => codeArray(pc+1) match {
-          case RawBytes(idx) =>
-//	I have a feeling this is incorrect:    setHeight(from + 3, -(there + constantPool.getFieldSize(idx) + 1))
-	    setHeight(from + 3, there - constantPool.getFieldSize(idx) - 1) // Better?
-          case _ => sys.error("Expected RawBytes after PUTFIELD.")
+          case RawBytes(idx) => setHeight(from + 3, there - constantPool.getFieldSize(idx) - 1)
+          case _ => throw CodeFreezingException("Expected RawBytes after PUTFIELD.")
         }
         case PUTSTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => // setHeight(from + 3, -(there + constantPool.getFieldSize(idx)))
 	    setHeight(from + 3, there - constantPool.getFieldSize(idx))
-          case _ => sys.error("Expected RawBytes after PUTSTATIC.")
+          case _ => throw CodeFreezingException("Expected RawBytes after PUTSTATIC.")
         }
         case INVOKEVIRTUAL | INVOKESPECIAL => codeArray(pc+1) match {
           case RawBytes(idx) => {
             val se = constantPool.getMethodEffect(idx) - 1
             setHeight(from + 3, there + se)
           }
-          case _ => sys.error("Expected RawBytes after INVOKEVIRTUAL/INVOKESPECIAL.")
+          case _ => throw CodeFreezingException("Expected RawBytes after INVOKEVIRTUAL/INVOKESPECIAL.")
         }
         case INVOKEINTERFACE => codeArray(pc+1) match {
           case RawBytes(idx) => codeArray(pc+3) match {
@@ -195,20 +218,20 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
               val se = constantPool.getMethodEffect(idx)
               codeArray(pc+4) match {
                 case RawByte(0) => setHeight(from + 5, there + se - 1)
-                case _ => sys.error("Expected RawByte(0) as the last param for INVOKEINTERFACE")
+                case _ => throw CodeFreezingException("Expected RawByte(0) as the last param for INVOKEINTERFACE")
               }
             }
-            case b => sys.error("Expected RawByte after the RawBytes in INVOKEINTERFACE @ " + pc + " ; found: " + b)
+            case b => throw CodeFreezingException("Expected RawByte after the RawBytes in INVOKEINTERFACE @ " + pc + " ; found: " + b)
 
           }
-          case _ => sys.error("Expected RawBytes after INVOKEINTERFACE.")
+          case _ => throw CodeFreezingException("Expected RawBytes after INVOKEINTERFACE.")
         }
         case INVOKESTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => {
             val se = constantPool.getMethodEffect(idx)
             setHeight(from + 3, there + se)
           }
-          case _ => sys.error("Expected RawBytes after INVOKESTATIC.")
+          case _ => throw CodeFreezingException("Expected RawBytes after INVOKESTATIC.")
         }
         case g @ Goto(_) => setHeight(from + g.offset, there)
         case co : ControlOperator => {
@@ -220,18 +243,19 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     }
 
     setHeight(0, 0)
-    val max: Int = heightArray.max
-    max.asInstanceOf[U2]
+    heightArray.max.asInstanceOf[U2]
   }
 
-  def print: Unit = if(!frozen) print0(abcList.reverse)
-
-  private def print0(seq: Seq[AbstractByteCode]): Unit = {
-    seq.foreach(_ match {
-      case Label(name) => println(name + ":")
-      case other @ _ => println("    " + other)
-    })
+  def print : Unit = if(!frozen) {
+    var pc = 0
+    for(abc <- abcBuffer) {
+      abc match {
+        case Label(name) =>
+          println(name + ":")
+        case _ =>
+          println("%5d %s".format(pc, abc))
+          pc += abc.size
+      }
+    }
   }
-
-
 }
