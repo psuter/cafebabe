@@ -46,6 +46,12 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
     attributes = SourceFileAttributeInfo(sourceFileNameIndex, idx) :: attributes
   }
 
+  /** Sets the access flags for the class. */
+  def setFlags(flags : U2) : Unit = { accessFlags = flags }
+
+  /** Returns the currently set flags. */
+  def getFlags : U2 = accessFlags
+
   /** Adds a field to the class, using the default flags and no attributes. */
   def addField(tpe: String, name: String): FieldHandler = {
     val accessFlags: U2 = defaultFieldAccessFlags
