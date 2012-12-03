@@ -100,18 +100,15 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
   }
 
   /** Writes the binary representation of this class file to a file. */
-  def writeToFile(fileName : String) : Unit = {
+  def writeToFile(fileName : String) {
     // The stream we'll ultimately use to write the class file data
     val byteStream = new ByteStream
     byteStream << this
     byteStream.writeToFile(fileName)
   }
 
-  /** Loads the class using the current class loader. */
-  def dynamicallyLoad : Unit = {
-    val byteStream = (new ByteStream) << this
-    val bytes : Array[Byte] = byteStream.getBytes
-    CustomClassLoader.registerClass(className, bytes)
+  def registerWithClassLoader(classLoader : CafebabeClassLoader) {
+    classLoader.register(this)
   }
 
   def toStream(byteStream: ByteStream): ByteStream = {

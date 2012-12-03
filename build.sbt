@@ -8,5 +8,7 @@ scalacOptions += "-deprecation"
 
 scalacOptions += "-unchecked"
 
+scalacOptions += "-Xexperimental"
+
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.8"
 
