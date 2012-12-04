@@ -185,7 +185,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
         case RETURN => if(there != 0) throw CodeFreezingException("Non-empty stack after return in void method")
         case ARETURN | DRETURN | FRETURN | IRETURN | LRETURN => {
           if(there + codeArray(pc).asInstanceOf[ByteCode].stackEffect.get != 0)
-            throw CodeFreezingException("Stack not empty after return.")
+            throw CodeFreezingException("Stack not empty after return.", abcList)
         }
         case bc: ByteCode if !bc.stackEffect.isEmpty => setHeight(from + bc.length.get, there + bc.stackEffect.get)
         case GETFIELD => codeArray(pc+1) match {
