@@ -66,14 +66,17 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
   def addMethod(retTpe: String, name: String, args: String*): MethodHandler = addMethod(retTpe,name,args.toList)
 
   def addMethod(retTpe: String, name: String, args: List[String]): MethodHandler = {
+    val concatArgs = args.mkString("")
+
     val accessFlags: U2 = defaultMethodAccessFlags
     val nameIndex: U2 = constantPool.addString(name)
-    val descriptorIndex: U2 = constantPool.addString(args.toList.mkString("(", "", ")") + retTpe)
+    val descriptorIndex: U2 = constantPool.addString(
+      "(" + concatArgs + ")" + retTpe
+    )
     val code = CodeAttributeInfo(codeNameIndex)
     val inf = MethodInfo(accessFlags, nameIndex, descriptorIndex, List(code))
     methods = methods ::: (inf :: Nil)
 
-    val concatArgs = args.mkString("")
 
     new MethodHandler(inf, code, constantPool, concatArgs)
   }
@@ -85,21 +88,32 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
     handler
   }
 
-  /** Adds a default constructor. */
-  def addDefaultConstructor: MethodHandler = {
-    val accessFlags: U2 = Flags.METHOD_ACC_PUBLIC
-    val nameIndex: U2 = constantPool.addString(constructorName)
-    val descriptorIndex: U2 = constantPool.addString(constructorSig)
+  /** Adds a constructor to the class. Constructor code should always start by invoking a constructor from the super class. */
+  def addConstructor(args : String*) : MethodHandler = addConstructor(args.toList)
+
+  def addConstructor(args : List[String]) : MethodHandler = {
+    val concatArgs = args.mkString("")
+
+    val accessFlags : U2 = Flags.METHOD_ACC_PUBLIC
+    val nameIndex : U2 = constantPool.addString(constructorName)
+    val descriptorIndex : U2 = constantPool.addString(
+      "(" + concatArgs + ")V"
+    )
     val code = CodeAttributeInfo(codeNameIndex)
     val inf = MethodInfo(accessFlags, nameIndex, descriptorIndex, List(code))
     methods = methods ::: (inf :: Nil)
-    val mh = new MethodHandler(inf, code, constantPool, "")
+    val mh = new MethodHandler(inf, code, constantPool, concatArgs)
+    mh
+  }
 
+  /** Adds a default constructor. */
+  def addDefaultConstructor: MethodHandler = {
     import ByteCodes._
     import AbstractByteCodes._
 
+    val mh = addConstructor(Nil)
     mh.codeHandler << ALOAD_0
-    mh.codeHandler << InvokeSpecial(superClassName, constructorName, constructorSig)
+    mh.codeHandler << InvokeSpecial(superClassName, constructorName, "()V")
     mh.codeHandler << RETURN
     mh.codeHandler.freeze
     mh
