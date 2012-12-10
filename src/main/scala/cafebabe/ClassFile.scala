@@ -28,12 +28,14 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
 
   private var fields: List[FieldInfo] = Nil
   private var methods: List[MethodInfo] = Nil
-
-  // TODO
-  private var interfacesCount: U2 = 0
-  private var interfaces: List[U1] = Nil
-
+  private var interfaces: List[InterfaceInfo] = Nil
   private var attributes : List[AttributeInfo] = Nil
+
+  def addInterface(name: String) {
+    val nameIndex = constantPool.addClass(constantPool.addString(name))
+
+    interfaces = InterfaceInfo(name, nameIndex) :: interfaces
+  }
 
   private var _srcNameWasSet = false
   /** Attaches the name of the original source file to the class file. */
@@ -140,7 +142,7 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
       accessFlags <<
       thisClass <<
       superClass <<
-      interfacesCount <<
+      interfaces.size.asInstanceOf[U2] << interfaces.reverse <<
       fields.size.asInstanceOf[U2] << fields <<
       methods.size.asInstanceOf[U2] << methods <<
       attributes.size.asInstanceOf[U2] << attributes
