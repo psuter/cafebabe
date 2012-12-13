@@ -183,6 +183,9 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
       codeArray(pc) match {
         case WIDE => sys.error("Wide is unsupported for now.")
         case RETURN => if(there != 0) throw CodeFreezingException("Non-empty stack after return in void method")
+        case ATHROW => {
+          // Nothing really matters.
+        }
         case ARETURN | DRETURN | FRETURN | IRETURN | LRETURN => {
           if(there + codeArray(pc).asInstanceOf[ByteCode].stackEffect.get != 0)
             throw CodeFreezingException("Stack not empty after return.", abcList)
