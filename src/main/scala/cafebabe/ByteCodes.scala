@@ -204,7 +204,7 @@ object ByteCodes {
   case object NOP extends ByteCode(0x0, 0, 1)
   case object POP2 extends ByteCode(0x58, -2, 1)
   case object POP extends ByteCode(0x57, -1, 1)
-  case object PUTFIELD extends ByteCode(0xB5, None, 3)
+  case object PUTFIELD extends ByteCode(0xB5, -2, 3)
   case object PUTSTATIC extends ByteCode(0xB3, None, 3)
   case object RET extends ByteCode(0xA9, 0, 2)
   case object RETURN extends ByteCode(0xB1, 0, 1)
