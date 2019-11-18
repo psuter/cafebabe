@@ -90,7 +90,13 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
   } else {
     frozen = true
 
-    val abcList = abcBuffer.toList
+    val abcBufferList = abcBuffer.toList
+
+    //Add NOP at the end if the last instruction's size is 0 to avoid IndexOutofBounds
+    val abcList = abcBufferList.last match{
+      case abc if abc.size == 0 => abcBufferList :+ NOP
+      case _ => abcBufferList
+    }
     code.maxLocals = locals
 
     val labels : MutableMap[String,Int] = MutableMap.empty
@@ -108,7 +114,9 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
             lastLineNumber = ln
             lineInfo(pc) = ln
           }
-          case Label(name) => labels(name) = pc
+          case Label(name) => {
+            labels(name) = pc
+          }
           case _ => ;
         }
         pc = pc + abc.size
@@ -153,6 +161,8 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
     locally {
       var pc = 0
       for(abc <- abcList) {
+        if(pc >= actualSize)
+          throw CodeFreezingException("Program counter at "+ pc +" exceeds actual size of codeArray " + actualSize, abcList)
         codeArray(pc) = abc
         pc += abc.size
       }
