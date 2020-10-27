@@ -56,7 +56,7 @@ package object cafebabe {
       case 'L' => {
         val end = s.indexOf(';')
         if(end < 0) sys.error("Malformed type (sub)string: " + s)
-        (1, s.substring(0, end), s.substring(end + 1, s.size))
+        (1, s.substring(0, end + 1), s.substring(end + 1, s.size))
       }
       case '[' => {
         if(s.tail.isEmpty) sys.error("Malformed type string: incomplete array type.")
