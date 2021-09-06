@@ -133,7 +133,7 @@ class ConstantPool extends Streamable {
         bytes.append(0x80 |         (c & 0x3F))
       }
     }
-    bytes
+    bytes.toSeq
   }
 
   def getFieldSize(idx: U2): Int = entryAt(idx) match {

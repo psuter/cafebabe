@@ -5,13 +5,13 @@ import scala.collection.mutable.{Map=>MutableMap}
 /** A `ClassLoader` with the capability for loading cafebabe
  *  `ClassFile`s directly from memory. */
 class CafebabeClassLoader(parent : ClassLoader) extends ClassLoader(parent) {
-  def this() {
+  def this() = {
     this(ClassLoader.getSystemClassLoader())
   }
 
   private val classBytes : MutableMap[String,Array[Byte]] = MutableMap.empty
 
-  def register(classFile : ClassFile) {
+  def register(classFile : ClassFile): Unit = {
     val name = classFile.className
     if(classBytes.isDefinedAt(name)) {
       throw new IllegalArgumentException("Cannot define the same class twice (%s).".format(name))

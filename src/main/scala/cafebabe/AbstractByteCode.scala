@@ -118,8 +118,8 @@ object AbstractByteCodes {
 
     def apply(l: Long): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       l match {
-        case 0l => ch << LCONST_0
-        case 1l => ch << LCONST_1
+        case 0L => ch << LCONST_0
+        case 1L => ch << LCONST_1
         case _ => ch << ldc2_ref(ch.constantPool.addLong(l))
       }
     })
