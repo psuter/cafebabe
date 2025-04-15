@@ -4,9 +4,9 @@ import cafebabe.CodeFreezingException
 import cafebabe.ByteCodes._
 import cafebabe.AbstractByteCodes._
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class GitHubIssue6 extends FunSuite {
+class GitHubIssue6 extends AnyFunSuite {
 
   test("Correct stack height") {
     val cf = new cafebabe.ClassFile("Test", None)

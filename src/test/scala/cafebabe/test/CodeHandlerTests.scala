@@ -4,9 +4,9 @@ import cafebabe._
 import cafebabe.ByteCodes._
 import cafebabe.AbstractByteCodes._
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class CodeHandlerTests extends FunSuite {
+class CodeHandlerTests extends AnyFunSuite {
   private def mkCodeHandler() : CodeHandler = {
     val cf = new cafebabe.ClassFile("Test", None)
     cf.addDefaultConstructor
@@ -14,7 +14,7 @@ class CodeHandlerTests extends FunSuite {
   }
 
   test("Cannot freeze twice") {
-    val ch = mkCodeHandler
+    val ch = mkCodeHandler()
     ch << RETURN
     ch.freeze
 

@@ -205,7 +205,7 @@ class CodeHandler private[cafebabe](c: CodeAttributeInfo, cp: ConstantPool, val 
         }
         case PUTSTATIC => codeArray(pc+1) match {
           case RawBytes(idx) => // setHeight(from + 3, -(there + constantPool.getFieldSize(idx)))
-	    setHeight(from + 3, there - constantPool.getFieldSize(idx))
+            setHeight(from + 3, there - constantPool.getFieldSize(idx))
           case _ => throw CodeFreezingException("Expected RawBytes after PUTSTATIC.")
         }
         case INVOKEVIRTUAL | INVOKESPECIAL => codeArray(pc+1) match {

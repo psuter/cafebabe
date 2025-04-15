@@ -1,5 +1,6 @@
 # (x)sbt specific
-project
+project/build
+project/project
 target
 
 # Vim and others
@@ -7,3 +8,18 @@ target
 
 # Java classes
 *.class
+
+# metals and VSCode
+.vscode
+.metals
+.bsp
+project/metals.sbt
+null
+.bloop/
+project/.bloop/
+project/project/
+
+# intellij
+.idea
+*.iml
+.idea_modules

@@ -38,7 +38,7 @@ object AbstractByteCodes {
   abstract class ControlOperator(val opCode: ByteCode) extends AbstractByteCode {
     def size: Int = 3
     val target: String
-    var offset: Int = _
+    var offset: Int = scala.compiletime.uninitialized
 
     override def toStream(bs: ByteStream): ByteStream = {
       if(offset > 65536 || offset < -32768) {
@@ -118,8 +118,8 @@ object AbstractByteCodes {
 
     def apply(l: Long): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       l match {
-        case 0l => ch << LCONST_0
-        case 1l => ch << LCONST_1
+        case 0L => ch << LCONST_0
+        case 1L => ch << LCONST_1
         case _ => ch << ldc2_ref(ch.constantPool.addLong(l))
       }
     })
@@ -128,7 +128,7 @@ object AbstractByteCodes {
       ch << ldc_ref(ch.constantPool.addStringConstant(ch.constantPool.addString(s)))
     })
 
-    def apply(c: Class[_]): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
+    def apply(c: Class[?]): AbstractByteCodeGenerator = ((ch: CodeHandler) => {
       ch << ldc_ref(ch.constantPool.addClass(ch.constantPool.addString(c.getName().replaceAll("\\.", "/"))))
     })
 
@@ -243,7 +243,7 @@ object AbstractByteCodes {
 
   private def invokeMethod(bc: ByteCode, className: String, methodName: String, methodSig: String): AbstractByteCodeGenerator = {
     (ch: CodeHandler) => {
-      val addMethodRef = if (bc == INVOKEINTERFACE) ch.constantPool.addInterfaceMethodRef _ else ch.constantPool.addMethodRef _
+      val addMethodRef = if (bc == INVOKEINTERFACE) ch.constantPool.addInterfaceMethodRef else ch.constantPool.addMethodRef
       ch << bc << RawBytes(addMethodRef(
         ch.constantPool.addClass(ch.constantPool.addString(className)),
         ch.constantPool.addNameAndType(
@@ -289,13 +289,13 @@ object AbstractByteCodes {
   object NewArray {
     def apply(arrayType: String): AbstractByteCodeGenerator = { // For objects
       (ch: CodeHandler) => {
-	ch << ANEWARRAY << RawBytes(ch.constantPool.addClass(ch.constantPool.addString(arrayType)))
+        ch << ANEWARRAY << RawBytes(ch.constantPool.addClass(ch.constantPool.addString(arrayType)))
       }
     }
 
     def apply(tpe: Int): AbstractByteCodeGenerator = { // Primitive types
       (ch: CodeHandler) => {
-	ch << NEWARRAY << RawByte(tpe)
+        ch << NEWARRAY << RawByte(tpe)
       }
     }
 

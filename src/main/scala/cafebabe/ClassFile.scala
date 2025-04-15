@@ -31,7 +31,7 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
   private var interfaces: List[InterfaceInfo] = Nil
   private var attributes : List[AttributeInfo] = Nil
 
-  def addInterface(name: String) {
+  def addInterface(name: String): Unit = {
     val nameIndex = constantPool.addClass(constantPool.addString(name))
 
     interfaces = InterfaceInfo(name, nameIndex) :: interfaces
@@ -122,14 +122,14 @@ class ClassFile(val className: String, parentName: Option[String] = None) extend
   }
 
   /** Writes the binary representation of this class file to a file. */
-  def writeToFile(fileName : String) {
+  def writeToFile(fileName : String): Unit = {
     // The stream we'll ultimately use to write the class file data
     val byteStream = new ByteStream
     byteStream << this
     byteStream.writeToFile(fileName)
   }
 
-  def registerWithClassLoader(classLoader : CafebabeClassLoader) {
+  def registerWithClassLoader(classLoader : CafebabeClassLoader): Unit = {
     classLoader.register(this)
   }
 

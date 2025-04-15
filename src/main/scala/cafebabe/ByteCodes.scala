@@ -11,7 +11,7 @@ object ByteCodes {
     override def toStream(bs: ByteStream): ByteStream = bs << code
   }
 
-  private implicit def intToOptionInt(i: Int) = Some(i)
+  private implicit def intToOptionInt(i: Int): Option[Int] = Some(i)
 
   case object AALOAD extends ByteCode(0x32, -1, 1)
   case object AASTORE extends ByteCode(0x53, -3, 1)

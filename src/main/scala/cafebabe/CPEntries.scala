@@ -81,7 +81,7 @@ case class CPNameAndTypeInfo(val nameIndex: U2, val descriptorIndex: U2) extends
 }
 
 case class CPUtf8Info(val bytes: Seq[U1]) extends CPEntry(CPTags.Utf8) {
-  private var original: String = _
+  private var original: String = scala.compiletime.uninitialized
 
   def setSource(str: String): CPUtf8Info = { original = str; this }
   def getSource: String = original

@@ -4,8 +4,9 @@ import cafebabe._
 import cafebabe.ByteCodes._
 import cafebabe.AbstractByteCodes._
 
-import org.scalatest.FunSuite
-class DynamicLoading extends FunSuite {
+import org.scalatest.funsuite.AnyFunSuite
+
+class DynamicLoading extends AnyFunSuite {
   private def mkMinimalClassFile : ClassFile = {
     val cf = new ClassFile("MyTest", None)
     cf.addDefaultConstructor
@@ -22,7 +23,7 @@ class DynamicLoading extends FunSuite {
     cl.register(cf)
     
     val c = cl.loadClass("MyTest")
-    val o = c.newInstance().asInstanceOf[AnyRef]
+    val o = c.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
     val m = c.getMethod("plusOne", Integer.TYPE)
 
     (m.invoke(o, 41 : java.lang.Integer) === 42)
