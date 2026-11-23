@@ -1,0 +1,173 @@
+# Publishes Cafebabe to Maven Central (ch.epfl.lara:cafebabe_3),
+# through the Central Portal, then pushes the tag and creates the release on
+# GitHub.
+#
+# Triggered manually from the Actions UI (or `gh workflow run release.yml -f
+# version=v1.3.0`), on the branch or commit to release (usually `main`).
+# Given a version vX.Y.Z, it:
+#   1. Creates an annotated tag vX.Y.Z on the current commit, locally: the tag
+#      is what `sbt-git`/`git describe` use as the version for the build (the
+#      build uses `git.useGitDescribe`).
+#   2. Tests, signs and publishes that version to Maven Central.
+#   3. Pushes the tag.
+#   4. Creates a GitHub release for that tag, with auto-generated notes and
+#      the JAR attached.
+#
+# With mode `upload`, it only uploads the artifacts to the Central Portal
+# (https://central.sonatype.com/publishing/deployments), to inspect them and
+# publish or drop them there; it then pushes no tag and creates no release.
+#
+# A version can't be published twice: when it is already on Maven Central,
+# the workflow skips publishing, and only pushes the tag and creates the
+# release if they are missing (e.g. when a previous run failed after
+# publishing). The tag is annotated, but not signed.
+#
+# Needs, in the `release` environment of the repository:
+# - secrets PGP_SECRET (the ASCII-armored secret key that signs the artifacts,
+#   `gpg --armor --export-secret-keys <fingerprint>`) and PGP_PASSPHRASE,
+# - secrets SONATYPE_USERNAME and SONATYPE_PASSWORD (a user token of the
+#   Central Portal, for an account that can publish to ch.epfl.lara).
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Three-component version to release, with leading v (e.g. v1.3.0)'
+        required: true
+      mode:
+        description: 'release: publish, push the tag and create the GitHub release; upload: only upload to the Central Portal, to inspect it there'
+        type: choice
+        options: [release, upload]
+        default: release
+
+permissions:
+  contents: write # to push the tag and create the release
+
+# Never two publications at once
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release ${{ inputs.version }} (${{ inputs.mode }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: release
+    env:
+      TAG: ${{ inputs.version }}
+      MODE: ${{ inputs.mode }}
+      GH_TOKEN: ${{ github.token }}
+      JAVA_OPTS: -Xss64M -Xms1024M -Xmx4G
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        # Full history and tags are required for `git describe` to compute the version
+        fetch-depth: 0
+        fetch-tags: true
+    - name: Validate the version and tag the current commit
+      run: |
+        if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::The version must look like vX.Y.Z (got '$TAG')"
+          exit 1
+        fi
+        if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+          # The tag of a previous run must be on this commit
+          tagged=$(git rev-list -n 1 "$TAG")
+          if [ "$tagged" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::Tag $TAG already exists, on another commit ($tagged)"
+            exit 1
+          fi
+          echo "Tag $TAG already exists on this commit"
+        else
+          # Pushed only once the version is published
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Cafebabe ${TAG#v}"
+        fi
+        echo "VERSION=${TAG#v}" >> "$GITHUB_ENV"
+    - name: Setup JDK
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 21
+        cache: sbt
+    - name: Setup sbt
+      uses: sbt/setup-sbt@v1
+    # Downloads sbt and the build's plugins, retrying: Maven Central sometimes answers 404 for
+    # files it has, which would otherwise fail the job.
+    - name: Fetch sbt
+      run: |
+        for attempt in 1 2 3; do
+          sbt --server -batch sbtVersion && exit 0
+          echo "::warning::Fetching sbt failed (attempt $attempt), retrying in 30s"
+          sleep 30
+        done
+        exit 1
+    - name: Check the version of the build
+      run: |
+        version=$(sbt --server -batch -no-colors "print version" | tail -n 1 | tr -d '[:space:]')
+        if [ "$version" != "$VERSION" ]; then
+          echo "::error::The build's version is $version instead of $VERSION (e.g. -SNAPSHOT when the working tree has changes)"
+          exit 1
+        fi
+    - name: Check whether the version is already published
+      id: published
+      run: |
+        url="https://repo1.maven.org/maven2/ch/epfl/lara/cafebabe_3/$VERSION/cafebabe_3-$VERSION.pom"
+        if curl -sfI "$url" > /dev/null; then
+          echo "::notice::Cafebabe $VERSION is already on Maven Central, skipping publishing"
+          echo "already=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "already=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Test
+      if: steps.published.outputs.already == 'false'
+      run: sbt --server -batch test
+    - name: Import the signing key
+      if: steps.published.outputs.already == 'false'
+      id: gpg
+      uses: crazy-max/ghaction-import-gpg@v7
+      with:
+        gpg_private_key: ${{ secrets.PGP_SECRET }}
+        passphrase: ${{ secrets.PGP_PASSPHRASE }}
+    - name: Publish to Maven Central
+      if: steps.published.outputs.already == 'false'
+      run: |
+        if [ "$MODE" = "upload" ]; then
+          sbt --server -batch publishSigned sonaUpload
+          echo "::notice::Cafebabe $VERSION uploaded: publish or drop it in the Central Portal. No tag was pushed and no release created."
+        else
+          sbt --server -batch publishSigned sonaRelease
+          echo "::notice::Cafebabe $VERSION released; it shows up on Maven Central within about 30 minutes"
+        fi
+      env:
+        PGP_FINGERPRINT: ${{ steps.gpg.outputs.fingerprint }}
+        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+    - name: Push the tag
+      if: inputs.mode == 'release'
+      run: |
+        if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null; then
+          echo "Tag $TAG is already pushed"
+        else
+          git push origin "refs/tags/$TAG"
+        fi
+    - name: Create the GitHub release
+      if: inputs.mode == 'release'
+      run: |
+        if gh release view "$TAG" > /dev/null 2>&1; then
+          echo "Release $TAG already exists"
+          exit 0
+        fi
+        sbt --server -batch package
+        cp -L target/out/jvm/scala-*/cafebabe/cafebabe_3-"$VERSION".jar .
+        # Notes generated from the pull requests merged since the previous release
+        gh release create "$TAG" \
+          --title "Cafebabe $VERSION" \
+          --generate-notes \
+          --verify-tag \
+          cafebabe_3-"$VERSION".jar
